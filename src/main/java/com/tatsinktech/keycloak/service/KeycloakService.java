@@ -23,12 +23,17 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.env.Environment;
 
 @Service
 public class KeycloakService {
 
     private static Logger logger = LoggerFactory.getLogger(KeycloakService.class);
+
+    @Autowired
+    ApplicationContext appCtx;
 
     @Value("${keycloak.serverUrl}")
     private String SERVER_URL;
@@ -49,12 +54,13 @@ public class KeycloakService {
     private String CLIENT_ID;
 
     private Keycloak getInstance() {
+        Environment environment = appCtx.getBean(Environment.class);
         return KeycloakBuilder
                 .builder()
-                .serverUrl(SERVER_URL)
+                .serverUrl(environment.getProperty("keycloak.serverUrl"))
                 .realm(masterREALM)
-                .username(USERNAME)
-                .password(PASSWORD)
+                .username(environment.getProperty("keycloak.username"))
+                .password(environment.getProperty("keycloak.password"))
                 .clientId(CLIENT_ID)
                 .build();
 
@@ -206,7 +212,7 @@ public class KeycloakService {
         keycloak.realm(REALM)
                 .rolesById()
                 .addComposites(role.getId(), composites);
-         return HttpStatus.CREATED.value();
+        return HttpStatus.CREATED.value();
     }
 
     public int addRealmRoleToUser(String userName, String role_name) {
@@ -218,13 +224,12 @@ public class KeycloakService {
                 .search(userName)
                 .get(0)
                 .getId();
-        
+
         UserResource user = keycloak
                 .realm(REALM)
                 .users()
                 .get(userId);
-        
-        
+
         List<RoleRepresentation> roleToAdd = new LinkedList<>();
 
         roleToAdd.add(keycloak.realm(REALM)
@@ -232,7 +237,7 @@ public class KeycloakService {
                 .get(role_name)
                 .toRepresentation()
         );
-        
+
         user.roles().realmLevel().add(roleToAdd);
         return HttpStatus.CREATED.value();
     }
